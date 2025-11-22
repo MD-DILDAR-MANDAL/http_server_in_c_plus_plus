@@ -1,0 +1,27 @@
+{
+    "version": "1.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "g++ build active file",
+            "command": "/usr/bin/g++",
+            "args": [
+                "-std=c++17",
+                "main.cpp",
+                "-lcpprest",
+                "-lssl",
+                "-lcrypto",
+                "-o",
+                "server"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Build REST server"
+        }
+    ]
+}
