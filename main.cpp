@@ -1,12 +1,10 @@
-/*g++ -std=c++17 main.cpp -lboost_system -lboost_thread -lpthread -o server*/
+/*g++ -std=c++17 main.cpp -o server*/
 #include <boost/asio.hpp>
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/strand.hpp>
-
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
-
 #include <thread>
 #include <string>
 #include <memory>
@@ -34,7 +32,6 @@ std::string handle_request(const http::request<http::string_body> &req)
         }
         return headers;
     }
-
     return "Not Found";
 }
 
@@ -46,6 +43,7 @@ class session : public std::enable_shared_from_this<session>
     tcp::socket socket_;
     boost::beast::flat_buffer buffer_;
     http::request<http::string_body> req_;
+    http::response<http::string_body> res_;
 
 public:
     explicit session(tcp::socket socket)
@@ -75,24 +73,23 @@ private:
 
         std::string body = handle_request(req_);
 
-        http::response<http::string_body> res;
-        res.version(req_.version());
-        res.keep_alive(false);
+        res_.version(req_.version());
+        res_.keep_alive(false);
 
         if (body == "Not Found")
         {
-            res.result(http::status::not_found);
+            res_.result(http::status::not_found);
         }
         else
         {
-            res.result(http::status::ok);
+            res_.result(http::status::ok);
         }
 
-        res.set(http::field::server, "Boost.Beast Server");
-        res.body() = body;
-        res.prepare_payload();
+        res_.set(http::field::server, "Boost.Beast Server");
+        res_.body() = body;
+        res_.prepare_payload();
 
-        http::async_write(socket_, res,
+        http::async_write(socket_, res_,
                           [self](boost::beast::error_code ec, std::size_t)
                           {
                               self->socket_.shutdown(tcp::socket::shutdown_send, ec);
@@ -138,6 +135,11 @@ public:
 private:
     void do_accept()
     {
+        // used to create a std::shared_ptr to the current object from within a
+        // class that publicly inherits from std::enable_shared_from_this.
+        // This is necessary when the object's lifetime must be extended beyond
+        // the current scope, particularly in asynchronous operations where a
+        // lambda or callback may outlive the original scope that created it.
         auto self = shared_from_this();
 
         self->socket_ = tcp::socket(ioc_);
